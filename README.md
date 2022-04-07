@@ -11,3 +11,7 @@ Simply call one of the following two methods:
 <code>Moe.Lowiro.Arcaea.Chart.CountNote(string path)</code>
 
 <code>Moe.Lowiro.Arcaea.Chart.CountNote(Stream stream)</code>
+
+## Notes about compiling
+
+Do **NOT** check "Code Optimization" in the Project Properties. It will affect floating point errors.
