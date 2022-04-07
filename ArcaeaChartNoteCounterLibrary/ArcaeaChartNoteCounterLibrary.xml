@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ArcaeaChartNoteCounterLibrary</name>
+    </assembly>
+    <members>
+        <member name="M:Moe.Lowiro.Arcaea.Chart.CountNote(System.String)">
+            <summary>Load a chart file from the given path and count notes.</summary>
+            <returns>Note count.</returns>
+            <exception cref="T:System.ArgumentException"/>
+            <exception cref="T:System.ArgumentNullException"/>
+            <exception cref="T:System.IO.PathTooLongException"/>
+            <exception cref="T:System.IO.DirectoryNotFoundException"/>
+            <exception cref="T:System.IO.IOException"/>
+            <exception cref="T:System.UnauthorizedAccessException"/>
+            <exception cref="T:System.IO.FileNotFoundException"/>
+            <exception cref="T:System.NotSupportedException"/>
+            <exception cref="T:System.Security.SecurityException"/>
+            <exception cref="T:Moe.Lowiro.Arcaea.ChartFormatException"/>
+        </member>
+        <member name="M:Moe.Lowiro.Arcaea.Chart.CountNote(System.IO.Stream)">
+            <summary>Load a chart file from a stream and count notes.</summary>
+            <returns>Note count.</returns>
+            <exception cref="T:System.ArgumentException"/>
+            <exception cref="T:System.ArgumentNullException"/>
+            <exception cref="T:System.Text.DecoderFallbackException"/>
+            <exception cref="T:System.NotSupportedException"/>
+            <exception cref="T:System.ObjectDisposedException"/>
+            <exception cref="T:System.IO.IOException"/>
+            <exception cref="T:Moe.Lowiro.Arcaea.ChartFormatException"/>
+        </member>
+    </members>
+</doc>

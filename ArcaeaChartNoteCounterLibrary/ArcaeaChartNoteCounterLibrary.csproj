@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Moe.Lowiro.Arcaea</RootNamespace>
+    <PackageId>ArcaeaChartNoteCounterLibrary</PackageId>
+    <Authors>Lolitania</Authors>
+    <Company>にじさんじ</Company>
+    <Product>Arcaea Chart Note Counter Library</Product>
+    <Version>1.1.0</Version>
+    <ErrorReport>none</ErrorReport>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile></DocumentationFile>
+    <WarningLevel>5</WarningLevel>
+    <Optimize>false</Optimize>
+    <DefineConstants />
+    <NoWarn />
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+  </PropertyGroup>
+
+</Project>
