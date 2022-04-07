@@ -8,9 +8,9 @@ Last updated for Arcaea v3.12.6.
 
 Simply call one of the following two methods:
 
-<code>Moe.Lowiro.Arcaea.Chart.CountNote(string path)</code>
+<code>int Moe.Lowiro.Arcaea.Chart.CountNote(string path);</code>
 
-<code>Moe.Lowiro.Arcaea.Chart.CountNote(Stream stream)</code>
+<code>int Moe.Lowiro.Arcaea.Chart.CountNote(Stream stream);</code>
 
 ## Notes about compiling
 
