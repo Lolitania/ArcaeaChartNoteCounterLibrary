@@ -21,7 +21,9 @@ Do **NOT** check *"Code Optimization"* in the Project Properties. It will affect
 
 ## Example
 
-We do not offer Arcaea charts due to copyright reasons. Please get it yourself.
+This is an example of using this library to count the notes of all charts and saving the results as CSV.
+
+Note that we do not offer Arcaea charts due to copyright reasons. Please get them yourself.
 
 ```csharp
 using static Moe.Lowiro.Arcaea.Chart;
