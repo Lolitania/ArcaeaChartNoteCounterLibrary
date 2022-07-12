@@ -140,8 +140,8 @@ namespace Moe.Lowiro.Arcaea
                                     int.TryParse(args[0], out int t) &&
                                     int.TryParse(args[1], out int tk) &&
                                     t >= 0 &&
-                                    tk >= 1 &&
-                                    tk <= 4)
+                                    tk >= 0 &&
+                                    tk <= 5)
                                 {
                                     currGroup.Add();
                                     continue;
@@ -160,8 +160,8 @@ namespace Moe.Lowiro.Arcaea
                                     int.TryParse(args[2], out int tk) &&
                                     st >= 0 &&
                                     et >= 0 &&
-                                    tk >= 1 &&
-                                    tk <= 4)
+                                    tk >= 0 &&
+                                    tk <= 5)
                                 {
                                     currGroup.Add(new LongObject(st, et));
                                     continue;
@@ -344,7 +344,10 @@ namespace Moe.Lowiro.Arcaea
             {
             case "none":
             case "full":
-            case "incremental": return true;
+            case "incremental":
+            case "glass_wav":
+            case "kick_wav":
+            case "voice_wav": return true;
             default: return false;
             }
         }
@@ -359,7 +362,9 @@ namespace Moe.Lowiro.Arcaea
             case "redline":
             case "trackdisplay":
             case "trackhide":
-            case "trackshow": return true;
+            case "trackshow":
+            case "enwidencamera":
+            case "enwidenlanes": return true;
             default: return false;
             }
         }
