@@ -138,10 +138,8 @@ namespace Moe.Lowiro.Arcaea
                                 string[] args = data.Substring(1, data.Length - 3).Split(',');
                                 if (args.Length == 2 &&
                                     int.TryParse(args[0], out int t) &&
-                                    int.TryParse(args[1], out int tk) &&
-                                    t >= 0 &&
-                                    tk >= 0 &&
-                                    tk <= 5)
+                                    float.TryParse(args[1], out _) &&
+                                    t >= 0)
                                 {
                                     currGroup.Add();
                                     continue;
@@ -157,11 +155,9 @@ namespace Moe.Lowiro.Arcaea
                                 if (args.Length == 3 &&
                                     int.TryParse(args[0], out int st) &&
                                     int.TryParse(args[1], out int et) &&
-                                    int.TryParse(args[2], out int tk) &&
+                                    float.TryParse(args[2], out _) &&
                                     st >= 0 &&
-                                    et >= 0 &&
-                                    tk >= 0 &&
-                                    tk <= 5)
+                                    et >= st)
                                 {
                                     currGroup.Add(new LongObject(st, et));
                                     continue;
@@ -191,7 +187,6 @@ namespace Moe.Lowiro.Arcaea
                                     float.TryParse(args[5], out float sy) &&
                                     float.TryParse(args[6], out float ey) &&
                                     int.TryParse(args[7], out int cr) &&
-                                    CheckArcFx(args[8]) &&
                                     bool.TryParse(args[9], out bool vd) &&
                                     st >= 0 &&
                                     et >= 0 &&
@@ -210,9 +205,7 @@ namespace Moe.Lowiro.Arcaea
                                                 if (arg.Length >= 9 &&
                                                     arg.StartsWith("arctap(") &&
                                                     arg[arg.Length - 1] == ')' &&
-                                                    int.TryParse(arg.Substring(7, arg.Length - 8), out int t) &&
-                                                    t >= st &&
-                                                    t <= et)
+                                                    int.TryParse(arg.Substring(7, arg.Length - 8), out _))
                                                 {
                                                     currGroup.Add();
                                                 }
@@ -310,7 +303,7 @@ namespace Moe.Lowiro.Arcaea
                     {
                         break;
                     }
-                    else if (arc != prev && arc.StartY == prev.EndY && Math.Abs(arc.StartX - prev.EndX) < 0.1)
+                    else if (arc != prev && arc.StartY == prev.EndY && arc.Timing >= prev.Timing && Math.Abs(arc.StartX - prev.EndX) < 0.1)
                     {
                         arc.HasHead = false;
                     }
@@ -334,20 +327,6 @@ namespace Moe.Lowiro.Arcaea
             case "siso":
             case "sosi":
             case "soso": return true;
-            default: return false;
-            }
-        }
-
-        private bool CheckArcFx(string arg)
-        {
-            switch (arg)
-            {
-            case "none":
-            case "full":
-            case "incremental":
-            case "glass_wav":
-            case "kick_wav":
-            case "voice_wav": return true;
             default: return false;
             }
         }
