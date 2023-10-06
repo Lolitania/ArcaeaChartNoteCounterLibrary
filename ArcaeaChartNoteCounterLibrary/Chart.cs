@@ -285,27 +285,32 @@ namespace Moe.Lowiro.Arcaea
             }
             mainGroup.Preprocess();
             groups.Add(mainGroup);
-            arcs.Sort((a, b) => a.Timing.CompareTo(b.Timing));
-            Arc[] scra = arcs.ToArray();
-            Array.Sort(scra, (a, b) => a.EndTiming.CompareTo(b.EndTiming));
-            int m = scra.Length;
-            int i = 0;
-            foreach (Arc arc in arcs)
+            arcs.Sort((a, b) =>
             {
-                for (int j = i; j < m; ++j)
+                int result = a.Timing.CompareTo(b.Timing);
+                if (result == 0)
                 {
-                    Arc prev = scra[j];
-                    if (prev.EndTiming <= arc.Timing - 10)
-                    {
-                        i = j;
-                    }
-                    else if (prev.EndTiming >= arc.Timing + 10)
+                    result = a.EndTiming.CompareTo(b.EndTiming);
+                }
+                return result;
+            });
+            for (int i = 0, count = arcs.Count; i < count; ++i)
+            {
+                Arc arc = arcs[i];
+                for (int j = i + 1; j < count; ++j)
+                {
+                    Arc next = arcs[j];
+                    if (next.Timing >= arc.EndTiming + 10)
                     {
                         break;
                     }
-                    else if (arc != prev && arc.StartY == prev.EndY && arc.Timing >= prev.Timing && Math.Abs(arc.StartX - prev.EndX) < 0.1)
+                    else if (next.Timing <= arc.EndTiming - 10)
                     {
-                        arc.HasHead = false;
+                        continue;
+                    }
+                    else if (next.HasHead && arc.EndY == next.StartY && Math.Abs(next.StartX - arc.EndX) < 0.1)
+                    {
+                        next.HasHead = false;
                     }
                 }
             }
