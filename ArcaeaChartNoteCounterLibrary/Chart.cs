@@ -167,13 +167,15 @@ namespace Moe.Lowiro.Arcaea
                         }
                         else if (data.StartsWith("arc(") && data[data.Length - 1] == ';')
                         {
-                            string ts = null;
-                            int s = data.IndexOf('[');
-                            int e = data.IndexOf(']');
-                            if (s >= 30 && e >= 31 && s < e)
+                            string atstr = null;
+                            bool hasat = false;
+                            int sat = data.IndexOf('[');
+                            int eat = data.IndexOf(']');
+                            if (sat >= 30 && eat >= 31 && sat < eat)
                             {
-                                ts = data.Substring(s + 1, e - s - 1);
-                                data = data.Remove(s, e - s + 1);
+                                atstr = data.Substring(sat + 1, eat - sat - 1);
+                                data = data.Remove(sat, eat - sat + 1);
+                                hasat = true;
                             }
                             if (data.Length >= 31)
                             {
@@ -186,44 +188,41 @@ namespace Moe.Lowiro.Arcaea
                                     CheckArcCurve(args[4]) &&
                                     float.TryParse(args[5], out float sy) &&
                                     float.TryParse(args[6], out float ey) &&
-                                    int.TryParse(args[7], out int cr) &&
+                                    int.TryParse(args[7], out int cl) &&
                                     bool.TryParse(args[9], out bool vd) &&
                                     st >= 0 &&
                                     et >= 0 &&
-                                    ((vd |= ts != null) || (st <= et && cr >= 0 && cr <= 2)))
+                                    (vd || hasat || (st <= et && cl >= 0 && cl <= 3)))
                                 {
-                                    if (ts != null)
+                                    if (!vd && st == et && cl == 3)
                                     {
                                         vd = true;
+                                        currGroup.Add();
                                     }
-                                    if (vd)
+                                    if (hasat)
                                     {
-                                        if (ts != null)
+                                        foreach (string arg in atstr.Split(','))
                                         {
-                                            foreach (string arg in ts.Split(','))
+                                            if (arg.Length >= 9 &&
+                                                arg.StartsWith("arctap(") &&
+                                                arg[arg.Length - 1] == ')' &&
+                                                int.TryParse(arg.Substring(7, arg.Length - 8), out _))
                                             {
-                                                if (arg.Length >= 9 &&
-                                                    arg.StartsWith("arctap(") &&
-                                                    arg[arg.Length - 1] == ')' &&
-                                                    int.TryParse(arg.Substring(7, arg.Length - 8), out _))
-                                                {
-                                                    currGroup.Add();
-                                                }
-                                                else
-                                                {
-                                                    throw new ChartFormatException(ChartErrorType.ArcTap, line);
-                                                }
+                                                currGroup.Add();
+                                            }
+                                            else
+                                            {
+                                                throw new ChartFormatException(ChartErrorType.ArcTap, line);
                                             }
                                         }
-                                        continue;
                                     }
-                                    else
+                                    else if (!vd)
                                     {
                                         Arc arc = new Arc(st, et, sx, ex, sy, ey);
                                         currGroup.Add(arc);
                                         arcs.Add(arc);
-                                        continue;
                                     }
+                                    continue;
                                 }
                             }
                             throw new ChartFormatException(ChartErrorType.Arc, line);
