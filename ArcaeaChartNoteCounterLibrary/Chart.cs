@@ -11,7 +11,7 @@ namespace Moe.Lowiro.Arcaea
 
         public static int CountNote(Stream stream)
         {
-            byte[] bytes = new byte[stream.Length];
+            var bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
             return new Chart(new StringReader(encoding.GetString(bytes))).note;
         }
@@ -21,16 +21,16 @@ namespace Moe.Lowiro.Arcaea
 
         private Chart(StringReader reader)
         {
-            bool header = true;
-            int line = 1;
-            float tpdf = 1;
+            var header = true;
+            var line = 1;
+            var tpdf = 1f;
             Group mainGroup = null;
             Group currGroup = null;
-            List<Group> groups = new List<Group>();
-            List<Arc> arcs = new List<Arc>();
+            var groups = new List<Group>();
+            var arcs = new List<Arc>();
             while (reader.Peek() != -1)
             {
-                string data = reader.ReadLine().Replace(" ", string.Empty);
+                var data = reader.ReadLine().Replace(" ", string.Empty);
                 if (data.Length > 0)
                 {
                     if (header)
@@ -73,34 +73,41 @@ namespace Moe.Lowiro.Arcaea
                             {
                                 throw new ChartFormatException(ChartErrorType.TimingGroup, line);
                             }
-                            bool allowInput = true;
-                            foreach (string arg in data.Substring(12, data.Length - 14).Split('_'))
+
+                            var allowInput = true;
+                            foreach (var arg in data.Substring(12, data.Length - 14).Split('_'))
                             {
-                                if (arg.Length == 0) { }
-                                else if (arg == "noinput")
+                                switch (arg)
                                 {
+                                case "": break;
+                                case "noinput":
                                     allowInput = false;
-                                }
-                                else if (arg == "fadingholds") { }
-                                else if (arg.StartsWith("anglex"))
-                                {
-                                    if (!int.TryParse(arg.Substring(6), out _))
+                                    break;
+                                case "fadingholds": break;
+                                default:
+                                    if (arg.StartsWith("anglex"))
+                                    {
+                                        if (!int.TryParse(arg.Substring(6), out _))
+                                        {
+                                            throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                                        }
+                                    }
+                                    else if (arg.StartsWith("angley"))
+                                    {
+                                        if (!int.TryParse(arg.Substring(6), out _))
+                                        {
+                                            throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                                        }
+                                    }
+                                    else
                                     {
                                         throw new ChartFormatException(ChartErrorType.TimingGroup, line);
                                     }
-                                }
-                                else if (arg.StartsWith("angley"))
-                                {
-                                    if (!int.TryParse(arg.Substring(6), out _))
-                                    {
-                                        throw new ChartFormatException(ChartErrorType.TimingGroup, line);
-                                    }
-                                }
-                                else
-                                {
-                                    throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+
+                                    break;
                                 }
                             }
+
                             currGroup = new Group(tpdf, allowInput);
                         }
                         else if (data == "};")
@@ -109,6 +116,7 @@ namespace Moe.Lowiro.Arcaea
                             {
                                 throw new ChartFormatException(ChartErrorType.TimingGroup, line);
                             }
+
                             currGroup.Preprocess();
                             groups.Add(currGroup);
                             currGroup = mainGroup;
@@ -117,11 +125,11 @@ namespace Moe.Lowiro.Arcaea
                         {
                             if (data.Length >= 14)
                             {
-                                string[] args = data.Substring(7, data.Length - 9).Split(',');
+                                var args = data.Substring(7, data.Length - 9).Split(',');
                                 if (args.Length == 3 &&
-                                    int.TryParse(args[0], out int t) &&
-                                    float.TryParse(args[1], out float bpm) &&
-                                    float.TryParse(args[2], out float bpl) &&
+                                    int.TryParse(args[0], out var t) &&
+                                    float.TryParse(args[1], out var bpm) &&
+                                    float.TryParse(args[2], out var bpl) &&
                                     t >= 0 &&
                                     (bpm == 0 || bpl != 0))
                                 {
@@ -129,15 +137,16 @@ namespace Moe.Lowiro.Arcaea
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.Timing, line);
                         }
                         else if (data[0] == '(' && data.EndsWith(");"))
                         {
                             if (data.Length >= 6)
                             {
-                                string[] args = data.Substring(1, data.Length - 3).Split(',');
+                                var args = data.Substring(1, data.Length - 3).Split(',');
                                 if (args.Length == 2 &&
-                                    int.TryParse(args[0], out int t) &&
+                                    int.TryParse(args[0], out var t) &&
                                     float.TryParse(args[1], out _) &&
                                     t >= 0)
                                 {
@@ -145,16 +154,17 @@ namespace Moe.Lowiro.Arcaea
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.Tap, line);
                         }
                         else if (data.StartsWith("hold(") && data.EndsWith(");"))
                         {
                             if (data.Length >= 12)
                             {
-                                string[] args = data.Substring(5, data.Length - 7).Split(',');
+                                var args = data.Substring(5, data.Length - 7).Split(',');
                                 if (args.Length == 3 &&
-                                    int.TryParse(args[0], out int st) &&
-                                    int.TryParse(args[1], out int et) &&
+                                    int.TryParse(args[0], out var st) &&
+                                    int.TryParse(args[1], out var et) &&
                                     float.TryParse(args[2], out _) &&
                                     st >= 0 &&
                                     et >= st)
@@ -163,50 +173,81 @@ namespace Moe.Lowiro.Arcaea
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.Hold, line);
                         }
                         else if (data.StartsWith("arc(") && data[data.Length - 1] == ';')
                         {
-                            string atstr = null;
-                            bool hasat = false;
-                            int sat = data.IndexOf('[');
-                            int eat = data.IndexOf(']');
-                            if (sat >= 30 && eat >= 31 && sat < eat)
+                            string dataExtra = null;
                             {
-                                atstr = data.Substring(sat + 1, eat - sat - 1);
-                                data = data.Remove(sat, eat - sat + 1);
-                                hasat = true;
+                                var sb = data.IndexOf('[');
+                                var eb = data.IndexOf(']');
+                                if (sb >= 30 && sb < eb)
+                                {
+                                    dataExtra = data.Substring(sb + 1, eb - sb - 1);
+                                    data = data.Remove(sb, eb - sb + 1);
+                                }
                             }
+
                             if (data.Length >= 31)
                             {
-                                string[] args = data.Substring(4, data.Length - 6).Split(',');
+                                var args = data.Substring(4, data.Length - 6).Split(',');
+                                var status = ArcStatus.Unknown;
+                                switch (args[9])
+                                {
+                                case "false":
+                                    status = dataExtra == null
+                                        ? ArcStatus.Normal
+                                        : ArcStatus.TraceWithArcTap;
+                                    break;
+                                case "true":
+                                    status = dataExtra == null
+                                        ? ArcStatus.Trace
+                                        : ArcStatus.TraceWithArcTap;
+                                    break;
+                                case "designant":
+                                    status = dataExtra == null
+                                        ? ArcStatus.Designant
+                                        : ArcStatus.DesignantWithArcTap;
+                                    break;
+                                }
+
                                 if (args.Length == 10 &&
-                                    int.TryParse(args[0], out int st) &&
-                                    int.TryParse(args[1], out int et) &&
-                                    float.TryParse(args[2], out float sx) &&
-                                    float.TryParse(args[3], out float ex) &&
+                                    int.TryParse(args[0], out var st) &&
+                                    int.TryParse(args[1], out var et) &&
+                                    float.TryParse(args[2], out var sx) &&
+                                    float.TryParse(args[3], out var ex) &&
                                     CheckArcCurve(args[4]) &&
-                                    float.TryParse(args[5], out float sy) &&
-                                    float.TryParse(args[6], out float ey) &&
-                                    int.TryParse(args[7], out int cl) &&
-                                    bool.TryParse(args[9], out bool vd) &&
+                                    float.TryParse(args[5], out var sy) &&
+                                    float.TryParse(args[6], out var ey) &&
+                                    int.TryParse(args[7], out var cl) &&
+                                    status != ArcStatus.Unknown &&
                                     st >= 0 &&
                                     et >= 0 &&
-                                    (vd || hasat || (st <= et && cl >= 0 && cl <= 3)))
+                                    (status != ArcStatus.Normal || (st <= et && cl >= 0 && cl <= 3)))
                                 {
-                                    if (!vd && st == et && cl == 3)
+                                    switch (status)
                                     {
-                                        vd = true;
-                                        currGroup.Add();
-                                    }
-                                    if (hasat)
-                                    {
-                                        foreach (string arg in atstr.Split(','))
+                                    case ArcStatus.Normal:
+                                        if (cl == 3 && st == et)
                                         {
-                                            if (arg.Length >= 9 &&
-                                                arg.StartsWith("arctap(") &&
-                                                arg[arg.Length - 1] == ')' &&
-                                                int.TryParse(arg.Substring(7, arg.Length - 8), out _))
+                                            currGroup.Add();
+                                        }
+                                        else
+                                        {
+                                            var arc = new Arc(st, et, sx, ex, sy, ey);
+                                            currGroup.Add(arc);
+                                            arcs.Add(arc);
+                                        }
+
+                                        break;
+                                    case ArcStatus.TraceWithArcTap:
+                                        foreach (var cmd in dataExtra.Split(','))
+                                        {
+                                            if (cmd.Length >= 9 &&
+                                                cmd.StartsWith("arctap(") &&
+                                                cmd[cmd.Length - 1] == ')' &&
+                                                int.TryParse(cmd.Substring(7, cmd.Length - 8), out _))
                                             {
                                                 currGroup.Add();
                                             }
@@ -215,45 +256,44 @@ namespace Moe.Lowiro.Arcaea
                                                 throw new ChartFormatException(ChartErrorType.ArcTap, line);
                                             }
                                         }
+
+                                        break;
                                     }
-                                    else if (!vd)
-                                    {
-                                        Arc arc = new Arc(st, et, sx, ex, sy, ey);
-                                        currGroup.Add(arc);
-                                        arcs.Add(arc);
-                                    }
+
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.Arc, line);
                         }
                         else if (data.StartsWith("scenecontrol(") && data.EndsWith(");"))
                         {
                             if (data.Length >= 24)
                             {
-                                string[] args = data.Substring(13, data.Length - 15).Split(',');
+                                var args = data.Substring(13, data.Length - 15).Split(',');
                                 if ((args.Length == 2 ||
-                                    (args.Length == 4 &&
-                                    float.TryParse(args[2], out float d) &&
-                                    int.TryParse(args[3], out int v) &&
-                                    d >= 0 &&
-                                    v >= 0)) &&
-                                    int.TryParse(args[0], out int t) &&
+                                     (args.Length == 4 &&
+                                      float.TryParse(args[2], out var d) &&
+                                      int.TryParse(args[3], out var v) &&
+                                      d >= 0 &&
+                                      v >= 0)) &&
+                                    int.TryParse(args[0], out var t) &&
                                     t >= 0 &&
                                     CheckSceneCtrlFx(args[1]))
                                 {
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.SceneControl, line);
                         }
                         else if (data.StartsWith("camera(") && data.EndsWith(");"))
                         {
                             if (data.Length >= 26)
                             {
-                                string[] args = data.Substring(7, data.Length - 9).Split(',');
+                                var args = data.Substring(7, data.Length - 9).Split(',');
                                 if (args.Length == 9 &&
-                                    int.TryParse(args[0], out int t) &&
+                                    int.TryParse(args[0], out var t) &&
                                     float.TryParse(args[1], out _) &&
                                     float.TryParse(args[2], out _) &&
                                     float.TryParse(args[3], out _) &&
@@ -261,13 +301,14 @@ namespace Moe.Lowiro.Arcaea
                                     float.TryParse(args[5], out _) &&
                                     float.TryParse(args[6], out _) &&
                                     CheckCameraMotion(args[7]) &&
-                                    int.TryParse(args[8], out int d) &&
+                                    int.TryParse(args[8], out var d) &&
                                     t >= 0 &&
                                     d >= 0)
                                 {
                                     continue;
                                 }
                             }
+
                             throw new ChartFormatException(ChartErrorType.Camera, line);
                         }
                         else
@@ -276,50 +317,57 @@ namespace Moe.Lowiro.Arcaea
                         }
                     }
                 }
+
                 ++line;
             }
+
             if (currGroup != mainGroup)
             {
                 throw new ChartFormatException(ChartErrorType.TimingGroup, line);
             }
+
             mainGroup.Preprocess();
             groups.Add(mainGroup);
             arcs.Sort((a, b) =>
             {
-                int result = a.Timing.CompareTo(b.Timing);
+                var result = a.Timing.CompareTo(b.Timing);
                 if (result == 0)
                 {
                     result = a.EndTiming.CompareTo(b.EndTiming);
                 }
+
                 return result;
             });
             for (int i = 0, count = arcs.Count; i < count; ++i)
             {
-                Arc arc = arcs[i];
-                for (int j = i + 1; j < count; ++j)
+                var arc = arcs[i];
+                for (var j = i + 1; j < count; ++j)
                 {
-                    Arc next = arcs[j];
+                    var next = arcs[j];
                     if (next.Timing >= arc.EndTiming + 10)
                     {
                         break;
                     }
-                    else if (next.Timing <= arc.EndTiming - 10)
+
+                    if (next.Timing <= arc.EndTiming - 10)
                     {
                         continue;
                     }
-                    else if (next.HasHead && arc.EndY == next.StartY && Math.Abs(next.StartX - arc.EndX) < 0.1)
+
+                    if (next.HasHead && arc.EndY == next.StartY && Math.Abs(next.StartX - arc.EndX) < 0.1)
                     {
                         next.HasHead = false;
                     }
                 }
             }
-            foreach (Group group in groups)
+
+            foreach (var group in groups)
             {
                 note += group.NoteCount;
             }
         }
 
-        private bool CheckArcCurve(string arg)
+        private static bool CheckArcCurve(string arg)
         {
             switch (arg)
             {
@@ -335,7 +383,7 @@ namespace Moe.Lowiro.Arcaea
             }
         }
 
-        private bool CheckSceneCtrlFx(string arg)
+        private static bool CheckSceneCtrlFx(string arg)
         {
             switch (arg)
             {
@@ -352,7 +400,7 @@ namespace Moe.Lowiro.Arcaea
             }
         }
 
-        private bool CheckCameraMotion(string arg)
+        private static bool CheckCameraMotion(string arg)
         {
             switch (arg)
             {
