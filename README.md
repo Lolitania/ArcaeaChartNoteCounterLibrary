@@ -2,7 +2,7 @@
 
 A really simple [Arcaea](https://arcaea.lowiro.com/) chart note counter library written in C#.
 
-Last updated for Arcaea v6.0.1.
+Last updated for Arcaea v6.0.3.
 
 ## How to use
 
