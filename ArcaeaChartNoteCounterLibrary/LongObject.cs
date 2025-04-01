@@ -15,19 +15,16 @@
 
         internal int CalculateNote(float bpm, float tpdf)
         {
-            if (Timing < EndTiming)
-            {
-                // Do NOT check "Code Optimization" in the Project Properties!!!
-                // I HATE FLOATING POINT ERROR...
-                float d = EndTiming - Timing;
-                float unit = bpm >= 256 ? 60000 : 30000;
-                unit /= bpm;
-                unit /= tpdf;
-                float cf = d / unit;
-                int ci = (int)cf;
-                return ci <= 1 ? 1 : HasHead ? ci - 1 : ci;
-            }
-            return 0;
+            if (Timing >= EndTiming) return 0;
+            // Do NOT check "Code Optimization" in the Project Properties!!!
+            // I HATE FLOATING POINT ERROR...
+            float d = EndTiming - Timing;
+            float unit = bpm >= 256 ? 60000 : 30000;
+            unit /= bpm;
+            unit /= tpdf;
+            var cf = d / unit;
+            var ci = (int)cf;
+            return ci <= 1 ? 1 : HasHead ? ci - 1 : ci;
         }
     }
 }

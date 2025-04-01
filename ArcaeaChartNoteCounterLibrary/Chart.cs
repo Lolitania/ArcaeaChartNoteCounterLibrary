@@ -7,23 +7,24 @@ namespace Moe.Lowiro.Arcaea
 {
     public class Chart
     {
-        public static int CountNote(string path) => new Chart(new StringReader(File.ReadAllText(path, encoding))).note;
+        public static int CountNote(string path, bool specialGreen = false) =>
+            new Chart(new StringReader(File.ReadAllText(path, encoding)), specialGreen).note;
 
-        public static int CountNote(Stream stream)
+        public static int CountNote(Stream stream, bool specialGreen = false)
         {
             var bytes = new byte[stream.Length];
-            stream.Read(bytes, 0, bytes.Length);
-            return new Chart(new StringReader(encoding.GetString(bytes))).note;
+            _ = stream.Read(bytes, 0, bytes.Length);
+            return new Chart(new StringReader(encoding.GetString(bytes)), specialGreen).note;
         }
 
-        private static readonly Encoding encoding = new UTF8Encoding(false);
-        private readonly int note = 0;
+        private static readonly UTF8Encoding encoding = new(false);
+        private readonly int note;
 
-        private Chart(StringReader reader)
+        private Chart(StringReader reader, bool specialGreen)
         {
             var header = true;
             var line = 1;
-            var tpdf = 1f;
+            var tpdf = 1f; // TimingPointDensityFactor
             Group mainGroup = null;
             Group currGroup = null;
             var groups = new List<Group>();
@@ -37,14 +38,14 @@ namespace Moe.Lowiro.Arcaea
                     {
                         if (data.StartsWith("AudioOffset:"))
                         {
-                            if (!int.TryParse(data.Substring(12), out _))
+                            if (!int.TryParse(data[12..], out _))
                             {
                                 throw new ChartFormatException(ChartErrorType.AudioOffset, line);
                             }
                         }
                         else if (data.StartsWith("TimingPointDensityFactor:"))
                         {
-                            if (!float.TryParse(data.Substring(25), out tpdf))
+                            if (!float.TryParse(data[25..], out tpdf))
                             {
                                 throw new ChartFormatException(ChartErrorType.TimingPointDensityFactor, line);
                             }
@@ -87,14 +88,14 @@ namespace Moe.Lowiro.Arcaea
                                 default:
                                     if (arg.StartsWith("anglex"))
                                     {
-                                        if (!int.TryParse(arg.Substring(6), out _))
+                                        if (!int.TryParse(arg[6..], out _))
                                         {
                                             throw new ChartFormatException(ChartErrorType.TimingGroup, line);
                                         }
                                     }
                                     else if (arg.StartsWith("angley"))
                                     {
-                                        if (!int.TryParse(arg.Substring(6), out _))
+                                        if (!int.TryParse(arg[6..], out _))
                                         {
                                             throw new ChartFormatException(ChartErrorType.TimingGroup, line);
                                         }
@@ -176,7 +177,7 @@ namespace Moe.Lowiro.Arcaea
 
                             throw new ChartFormatException(ChartErrorType.Hold, line);
                         }
-                        else if (data.StartsWith("arc(") && data[data.Length - 1] == ';')
+                        else if (data.StartsWith("arc(") && data[^1] == ';')
                         {
                             string dataExtra = null;
                             {
@@ -192,25 +193,15 @@ namespace Moe.Lowiro.Arcaea
                             if (data.Length >= 31)
                             {
                                 var args = data.Substring(4, data.Length - 6).Split(',');
-                                var status = ArcStatus.Unknown;
-                                switch (args[9])
+                                var status = args[9] switch
                                 {
-                                case "false":
-                                    status = dataExtra == null
-                                        ? ArcStatus.Normal
-                                        : ArcStatus.TraceWithArcTap;
-                                    break;
-                                case "true":
-                                    status = dataExtra == null
-                                        ? ArcStatus.Trace
-                                        : ArcStatus.TraceWithArcTap;
-                                    break;
-                                case "designant":
-                                    status = dataExtra == null
+                                    "false" => dataExtra == null ? ArcStatus.Normal : ArcStatus.TraceWithArcTap,
+                                    "true"  => dataExtra == null ? ArcStatus.Trace : ArcStatus.TraceWithArcTap,
+                                    "designant" => dataExtra == null
                                         ? ArcStatus.Designant
-                                        : ArcStatus.DesignantWithArcTap;
-                                    break;
-                                }
+                                        : ArcStatus.DesignantWithArcTap,
+                                    _ => ArcStatus.Unknown
+                                };
 
                                 if (args.Length == 10 &&
                                     int.TryParse(args[0], out var st) &&
@@ -220,24 +211,29 @@ namespace Moe.Lowiro.Arcaea
                                     CheckArcCurve(args[4]) &&
                                     float.TryParse(args[5], out var sy) &&
                                     float.TryParse(args[6], out var ey) &&
-                                    int.TryParse(args[7], out var cl) &&
+                                    int.TryParse(args[7], out var color) &&
                                     status != ArcStatus.Unknown &&
                                     st >= 0 &&
                                     et >= 0 &&
-                                    (status != ArcStatus.Normal || (st <= et && cl >= 0 && cl <= 3)))
+                                    (status != ArcStatus.Normal || (st <= et && color is >= 0 and <= 3)))
                                 {
                                     switch (status)
                                     {
                                     case ArcStatus.Normal:
-                                        if (cl == 3 && st == et)
+                                        switch (color)
                                         {
+                                        case 2 when specialGreen:
+                                            break;
+                                        case 3 when st == et:
                                             currGroup.Add();
-                                        }
-                                        else
-                                        {
-                                            var arc = new Arc(st, et, sx, ex, sy, ey);
-                                            currGroup.Add(arc);
-                                            arcs.Add(arc);
+                                            break;
+                                        default:
+                                            {
+                                                var arc = new Arc(st, et, sx, ex, sy, ey);
+                                                currGroup.Add(arc);
+                                                arcs.Add(arc);
+                                                break;
+                                            }
                                         }
 
                                         break;
@@ -246,8 +242,8 @@ namespace Moe.Lowiro.Arcaea
                                         {
                                             if (cmd.Length >= 9 &&
                                                 cmd.StartsWith("arctap(") &&
-                                                cmd[cmd.Length - 1] == ')' &&
-                                                int.TryParse(cmd.Substring(7, cmd.Length - 8), out _))
+                                                cmd[^1] == ')' &&
+                                                int.TryParse(cmd.AsSpan(7, cmd.Length - 8), out _))
                                             {
                                                 currGroup.Add();
                                             }
@@ -271,12 +267,12 @@ namespace Moe.Lowiro.Arcaea
                             if (data.Length >= 24)
                             {
                                 var args = data.Substring(13, data.Length - 15).Split(',');
-                                if ((args.Length == 2 ||
-                                     (args.Length == 4 &&
-                                      float.TryParse(args[2], out var d) &&
-                                      int.TryParse(args[3], out var v) &&
-                                      d >= 0 &&
-                                      v >= 0)) &&
+                                if ((args.Length == 2 || (
+                                        args.Length == 4 &&
+                                        float.TryParse(args[2], out var d) &&
+                                        int.TryParse(args[3], out var v) &&
+                                        d >= 0 &&
+                                        v >= 0)) &&
                                     int.TryParse(args[0], out var t) &&
                                     t >= 0 &&
                                     CheckSceneCtrlFx(args[1]))
@@ -367,50 +363,23 @@ namespace Moe.Lowiro.Arcaea
             }
         }
 
-        private static bool CheckArcCurve(string arg)
+        private static bool CheckArcCurve(string arg) => arg switch
         {
-            switch (arg)
-            {
-            case "b":
-            case "s":
-            case "si":
-            case "so":
-            case "sisi":
-            case "siso":
-            case "sosi":
-            case "soso": return true;
-            default: return false;
-            }
-        }
+            "b" or "s" or "si" or "so" or "sisi" or "siso" or "sosi" or "soso" => true,
+            _                                                                  => false
+        };
 
-        private static bool CheckSceneCtrlFx(string arg)
+        private static bool CheckSceneCtrlFx(string arg) => arg switch
         {
-            switch (arg)
-            {
-            case "arcahvdebris":
-            case "arcahvdistort":
-            case "hidegroup":
-            case "redline":
-            case "trackdisplay":
-            case "trackhide":
-            case "trackshow":
-            case "enwidencamera":
-            case "enwidenlanes": return true;
-            default: return false;
-            }
-        }
+            "arcahvdebris" or "arcahvdistort" or "hidegroup" or "redline" or "trackdisplay" or "trackhide"
+                or "trackshow" or "enwidencamera" or "enwidenlanes" => true,
+            _ => false
+        };
 
-        private static bool CheckCameraMotion(string arg)
+        private static bool CheckCameraMotion(string arg) => arg switch
         {
-            switch (arg)
-            {
-            case "l":
-            case "reset":
-            case "s":
-            case "qi":
-            case "qo": return true;
-            default: return false;
-            }
-        }
+            "l" or "reset" or "s" or "qi" or "qo" => true,
+            _                                     => false
+        };
     }
 }

@@ -2,36 +2,29 @@
 
 namespace Moe.Lowiro.Arcaea
 {
-    public class ChartFormatException : Exception
+    public class ChartFormatException(ChartErrorType type, int line = 0) : Exception
     {
         public override string ToString() => message;
 
-        public ChartErrorType Type { get; }
+        public ChartErrorType Type { get; } = type;
 
-        public int Line { get; }
+        public int Line { get; } = line;
 
-        public ChartFormatException(ChartErrorType type, int line = 0)
+        private readonly string message = type switch
         {
-            Type = type;
-            Line = line;
-            switch (type)
-            {
-            case ChartErrorType.FileFormat: message = $"This is not a chart file."; break;
-            case ChartErrorType.AudioOffset: message = $"Line {line}: Invalid AudioOffset value."; break;
-            case ChartErrorType.TimingPointDensityFactor: message = $"Line {line}: Invalid TimingPointDensityFactor value."; break;
-            case ChartErrorType.Delimiter: message = $"Line {line}: A delimiter is needed before event definitions."; break;
-            case ChartErrorType.Timing: message = $"Line {line}: Timing event parameter error."; break;
-            case ChartErrorType.Tap: message = $"Line {line}: Tap event parameter error."; break;
-            case ChartErrorType.Hold: message = $"Line {line}: Hold event parameter error."; break;
-            case ChartErrorType.Arc: message = $"Line {line}: Arc event parameter error."; break;
-            case ChartErrorType.ArcTap: message = $"Line {line}: ArcTap event parameter error."; break;
-            case ChartErrorType.Camera: message = $"Line {line}: Camera event parameter error."; break;
-            case ChartErrorType.SceneControl: message = $"Line {line}: SceneControl event parameter error."; break;
-            case ChartErrorType.TimingGroup: message = $"Line {line}: Invalid TimingGroup format."; break;
-            default: message = $"Line {line}: Unknown event or data."; break;
-            }
-        }
-
-        private readonly string message;
+            ChartErrorType.FileFormat               => $"This is not a chart file.",
+            ChartErrorType.AudioOffset              => $"Line {line}: Invalid AudioOffset value.",
+            ChartErrorType.TimingPointDensityFactor => $"Line {line}: Invalid TimingPointDensityFactor value.",
+            ChartErrorType.Delimiter                => $"Line {line}: A delimiter is needed before event definitions.",
+            ChartErrorType.Timing                   => $"Line {line}: Timing event parameter error.",
+            ChartErrorType.Tap                      => $"Line {line}: Tap event parameter error.",
+            ChartErrorType.Hold                     => $"Line {line}: Hold event parameter error.",
+            ChartErrorType.Arc                      => $"Line {line}: Arc event parameter error.",
+            ChartErrorType.ArcTap                   => $"Line {line}: ArcTap event parameter error.",
+            ChartErrorType.Camera                   => $"Line {line}: Camera event parameter error.",
+            ChartErrorType.SceneControl             => $"Line {line}: SceneControl event parameter error.",
+            ChartErrorType.TimingGroup              => $"Line {line}: Invalid TimingGroup format.",
+            _                                       => $"Line {line}: Unknown event or data."
+        };
     }
 }

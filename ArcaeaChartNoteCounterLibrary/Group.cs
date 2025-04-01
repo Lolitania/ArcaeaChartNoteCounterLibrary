@@ -8,18 +8,13 @@ namespace Moe.Lowiro.Arcaea
         {
             get
             {
-                if (allowInput)
+                if (!allowInput) return 0;
+                foreach (var obj in longs)
                 {
-                    foreach (LongObject obj in longs)
-                    {
-                        note += obj.CalculateNote(bpms[obj.Timing], tpdf);
-                    }
-                    return note;
+                    note += obj.CalculateNote(bpms[obj.Timing], tpdf);
                 }
-                else
-                {
-                    return 0;
-                }
+
+                return note;
             }
         }
 
@@ -31,75 +26,64 @@ namespace Moe.Lowiro.Arcaea
 
         internal void Add()
         {
-            if (allowInput)
-            {
-                ++note;
-            }
+            if (!allowInput) return;
+            ++note;
         }
 
         internal void Add(LongObject obj)
         {
-            if (allowInput)
-            {
-                longs.Add(obj);
-            }
+            if (!allowInput) return;
+            longs.Add(obj);
         }
 
         internal void Add(Timing timing)
         {
-            if (allowInput)
+            if (!allowInput) return;
+            if (timings.Count == 0)
             {
-                if (timings.Count == 0)
-                {
-                    timing.Timing = 0;
-                }
-                timings.Add(timing);
+                timing.Timing = 0;
             }
+
+            timings.Add(timing);
         }
 
         internal void Preprocess()
         {
-            if (allowInput)
+            if (!allowInput) return;
+            timings.Sort((a, b) => a.Timing.CompareTo(b.Timing));
+            longs.Sort((a, b) => a.Timing.CompareTo(b.Timing));
+            var map = new SortedList<int, Timing>();
+            foreach (var timing in timings)
             {
-                timings.Sort((a, b) => a.Timing.CompareTo(b.Timing));
-                longs.Sort((a, b) => a.Timing.CompareTo(b.Timing));
-                SortedList<int, Timing> map = new SortedList<int, Timing>();
-                foreach (Timing timing in timings)
+                map[timing.Timing] = timing;
+            }
+
+            var keys = new List<int>(map.Keys) { int.MaxValue }.ToArray();
+            var i = 0;
+            var bpm = map[0].Bpm;
+            var set = new SortedSet<int>();
+            foreach (var obj in longs)
+            {
+                set.Add(obj.Timing);
+            }
+
+            foreach (var timing in set)
+            {
+                while (timing >= keys[i + 1])
                 {
-                    if (map.ContainsKey(timing.Timing))
-                    {
-                        map[timing.Timing] = timing;
-                    }
-                    else
-                    {
-                        map.Add(timing.Timing, timing);
-                    }
+                    ++i;
+                    bpm = map[keys[i]].Bpm;
                 }
-                int[] keys = new List<int>(map.Keys) { int.MaxValue }.ToArray();
-                int i = 0;
-                float bpm = map[0].Bpm;
-                SortedSet<int> set = new SortedSet<int>();
-                foreach (LongObject obj in longs)
-                {
-                    set.Add(obj.Timing);
-                }
-                foreach (int timing in set)
-                {
-                    while (timing >= keys[i + 1])
-                    {
-                        ++i;
-                        bpm = map[keys[i]].Bpm;
-                    }
-                    bpms.Add(timing, bpm);
-                }
+
+                bpms.Add(timing, bpm);
             }
         }
 
-        private readonly List<Timing> timings = new List<Timing>();
-        private readonly List<LongObject> longs = new List<LongObject>();
-        private readonly Dictionary<int, float> bpms = new Dictionary<int, float>();
+        private readonly List<Timing> timings = [];
+        private readonly List<LongObject> longs = [];
+        private readonly Dictionary<int, float> bpms = new();
         private readonly float tpdf;
         private readonly bool allowInput;
-        private int note = 0;
+        private int note;
     }
 }
