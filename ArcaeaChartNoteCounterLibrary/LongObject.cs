@@ -19,7 +19,7 @@
             // Do NOT check "Code Optimization" in the Project Properties!!!
             // I HATE FLOATING POINT ERROR...
             float d = EndTiming - Timing;
-            float unit = bpm >= 256 ? 60000 : 30000;
+            float unit = bpm >= 255 ? 60000 : 30000;
             unit /= bpm;
             unit /= tpdf;
             var cf = d / unit;

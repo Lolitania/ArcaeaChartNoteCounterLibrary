@@ -193,6 +193,7 @@ namespace Moe.Lowiro.Arcaea
                             if (data.Length >= 31)
                             {
                                 var args = data.Substring(4, data.Length - 6).Split(',');
+                                if (args.Length != 10 && args.Length != 11) continue;
                                 var status = args[9] switch
                                 {
                                     "false" => dataExtra == null ? ArcStatus.Normal : ArcStatus.TraceWithArcTap,
@@ -203,8 +204,7 @@ namespace Moe.Lowiro.Arcaea
                                     _ => ArcStatus.Unknown
                                 };
 
-                                if (args.Length == 10 &&
-                                    int.TryParse(args[0], out var st) &&
+                                if (int.TryParse(args[0], out var st) &&
                                     int.TryParse(args[1], out var et) &&
                                     float.TryParse(args[2], out var sx) &&
                                     float.TryParse(args[3], out var ex) &&
@@ -212,6 +212,7 @@ namespace Moe.Lowiro.Arcaea
                                     float.TryParse(args[5], out var sy) &&
                                     float.TryParse(args[6], out var ey) &&
                                     int.TryParse(args[7], out var color) &&
+                                    (args.Length == 10 || float.TryParse(args[10], out _)) &&
                                     status != ArcStatus.Unknown &&
                                     st >= 0 &&
                                     et >= 0 &&
