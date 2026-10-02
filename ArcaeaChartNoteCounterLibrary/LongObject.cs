@@ -18,13 +18,13 @@
             if (Timing >= EndTiming) return 0;
             // Do NOT check "Code Optimization" in the Project Properties!!!
             // I HATE FLOATING POINT ERROR...
-            float d = EndTiming - Timing;
+            float duration = EndTiming - Timing;
             float unit = bpm >= 255 ? 60000 : 30000;
             unit /= bpm;
             unit /= tpdf;
-            var cf = d / unit;
-            var ci = (int)cf;
-            return ci <= 1 ? 1 : HasHead ? ci - 1 : ci;
+            var countFloat = duration / unit;
+            var countInt = (int)countFloat;
+            return countInt <= 1 ? 1 : HasHead ? countInt - 1 : countInt;
         }
     }
 }

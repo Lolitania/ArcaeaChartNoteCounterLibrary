@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Moe.Lowiro.Arcaea
 {
-    public class Chart
+    public partial class Chart
     {
         public static int CountNote(string path, bool specialGreen = false) =>
             new Chart(new StringReader(File.ReadAllText(path, encoding)), specialGreen).note;
@@ -20,10 +21,11 @@ namespace Moe.Lowiro.Arcaea
         private static readonly UTF8Encoding encoding = new(false);
         private readonly int note;
 
+        /// <param name="specialGreen">Green arcs are not counted in "yourbestnightmare_3".</param>
         private Chart(StringReader reader, bool specialGreen)
         {
             var header = true;
-            var line = 1;
+            var lineCount = 1;
             var tpdf = 1f; // TimingPointDensityFactor
             Group mainGroup = null;
             Group currGroup = null;
@@ -31,78 +33,66 @@ namespace Moe.Lowiro.Arcaea
             var arcs = new List<Arc>();
             while (reader.Peek() != -1)
             {
-                var data = reader.ReadLine().Replace(" ", string.Empty);
-                if (data.Length > 0)
+                var line = reader.ReadLine().Replace(" ", string.Empty);
+                if (line.Length > 0)
                 {
                     if (header)
                     {
-                        if (data.StartsWith("AudioOffset:"))
+                        if (line.StartsWith("AudioOffset:"))
                         {
-                            if (!int.TryParse(data[12..], out _))
+                            if (!int.TryParse(line[12..], out _))
                             {
-                                throw new ChartFormatException(ChartErrorType.AudioOffset, line);
+                                throw new ChartFormatException(ChartErrorType.AudioOffset, lineCount);
                             }
                         }
-                        else if (data.StartsWith("TimingPointDensityFactor:"))
+                        else if (line.StartsWith("TimingPointDensityFactor:"))
                         {
-                            if (!float.TryParse(data[25..], out tpdf))
+                            if (!float.TryParse(line[25..], out tpdf))
                             {
-                                throw new ChartFormatException(ChartErrorType.TimingPointDensityFactor, line);
+                                throw new ChartFormatException(ChartErrorType.TimingPointDensityFactor, lineCount);
                             }
                         }
-                        else if (data == "-")
+                        else if (line == "-")
                         {
                             header = false;
                             mainGroup = new Group(tpdf);
                             currGroup = mainGroup;
                         }
-                        else if (data.StartsWith("timing("))
+                        else if (line.StartsWith("timing("))
                         {
-                            throw new ChartFormatException(ChartErrorType.Delimiter, line);
+                            throw new ChartFormatException(ChartErrorType.Delimiter, lineCount);
                         }
                         else
                         {
-                            throw new ChartFormatException(ChartErrorType.FileFormat, line);
+                            throw new ChartFormatException(ChartErrorType.FileFormat, lineCount);
                         }
                     }
                     else
                     {
-                        if (data.Length == 0) { }
-                        else if (data.StartsWith("timinggroup(") && data.EndsWith("){"))
+                        if (line.Length == 0) { }
+                        else if (line.StartsWith("timinggroup(") && line.EndsWith("){"))
                         {
                             if (currGroup != mainGroup)
                             {
-                                throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                                throw new ChartFormatException(ChartErrorType.TimingGroup, lineCount);
                             }
 
                             var allowInput = true;
-                            foreach (var arg in data.Substring(12, data.Length - 14).Split('_'))
+                            foreach (var arg in line.Substring(12, line.Length - 14).Split('_'))
                             {
                                 switch (arg)
                                 {
-                                case "": break;
+                                case "":
+                                case "fadingholds":
+                                    break;
                                 case "noinput":
                                     allowInput = false;
                                     break;
-                                case "fadingholds": break;
                                 default:
-                                    if (arg.StartsWith("anglex"))
+                                    if (!AngleRegex().IsMatch(arg) &&
+                                        !TraceColRegex().IsMatch(arg))
                                     {
-                                        if (!int.TryParse(arg[6..], out _))
-                                        {
-                                            throw new ChartFormatException(ChartErrorType.TimingGroup, line);
-                                        }
-                                    }
-                                    else if (arg.StartsWith("angley"))
-                                    {
-                                        if (!int.TryParse(arg[6..], out _))
-                                        {
-                                            throw new ChartFormatException(ChartErrorType.TimingGroup, line);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                                        throw new ChartFormatException(ChartErrorType.TimingGroup, lineCount);
                                     }
 
                                     break;
@@ -111,216 +101,226 @@ namespace Moe.Lowiro.Arcaea
 
                             currGroup = new Group(tpdf, allowInput);
                         }
-                        else if (data == "};")
+                        else if (line == "};")
                         {
                             if (currGroup == mainGroup)
                             {
-                                throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                                throw new ChartFormatException(ChartErrorType.TimingGroup, lineCount);
                             }
 
                             currGroup.Preprocess();
                             groups.Add(currGroup);
                             currGroup = mainGroup;
                         }
-                        else if (data.StartsWith("timing(") && data.EndsWith(");"))
+                        else if (line.StartsWith("timing(") && line.EndsWith(");"))
                         {
-                            if (data.Length >= 14)
+                            if (line.Length < 14)
                             {
-                                var args = data.Substring(7, data.Length - 9).Split(',');
-                                if (args.Length == 3 &&
-                                    int.TryParse(args[0], out var t) &&
-                                    float.TryParse(args[1], out var bpm) &&
-                                    float.TryParse(args[2], out var bpl) &&
-                                    t >= 0 &&
-                                    (bpm == 0 || bpl != 0))
-                                {
-                                    currGroup.Add(new Timing(t, Math.Abs(bpm)));
-                                    continue;
-                                }
+                                throw new ChartFormatException(ChartErrorType.Timing, lineCount);
                             }
 
-                            throw new ChartFormatException(ChartErrorType.Timing, line);
+                            var args = line.Substring(7, line.Length - 9).Split(',');
+                            if (args.Length != 3 ||
+                                !int.TryParse(args[0], out var timing) ||
+                                !float.TryParse(args[1], out var bpm) ||
+                                !float.TryParse(args[2], out var bpl) ||
+                                timing < 0 ||
+                                (bpm != 0 && bpl == 0))
+                            {
+                                throw new ChartFormatException(ChartErrorType.Timing, lineCount);
+                            }
+
+                            currGroup.Add(new Timing(timing, Math.Abs(bpm)));
                         }
-                        else if (data[0] == '(' && data.EndsWith(");"))
+                        else if (line[0] == '(' && line.EndsWith(");"))
                         {
-                            if (data.Length >= 6)
+                            if (line.Length < 6)
                             {
-                                var args = data.Substring(1, data.Length - 3).Split(',');
-                                if (args.Length == 2 &&
-                                    int.TryParse(args[0], out var t) &&
-                                    float.TryParse(args[1], out _) &&
-                                    t >= 0)
-                                {
-                                    currGroup.Add();
-                                    continue;
-                                }
+                                throw new ChartFormatException(ChartErrorType.Tap, lineCount);
                             }
 
-                            throw new ChartFormatException(ChartErrorType.Tap, line);
+                            var args = line.Substring(1, line.Length - 3).Split(',');
+                            if (args.Length != 2 ||
+                                !int.TryParse(args[0], out var t) ||
+                                !float.TryParse(args[1], out _) ||
+                                t < 0)
+                            {
+                                throw new ChartFormatException(ChartErrorType.Tap, lineCount);
+                            }
+
+                            currGroup.Add();
                         }
-                        else if (data.StartsWith("hold(") && data.EndsWith(");"))
+                        else if (line.StartsWith("hold(") && line.EndsWith(");"))
                         {
-                            if (data.Length >= 12)
+                            if (line.Length < 12)
                             {
-                                var args = data.Substring(5, data.Length - 7).Split(',');
-                                if (args.Length == 3 &&
-                                    int.TryParse(args[0], out var st) &&
-                                    int.TryParse(args[1], out var et) &&
-                                    float.TryParse(args[2], out _) &&
-                                    st >= 0 &&
-                                    et >= st)
-                                {
-                                    currGroup.Add(new LongObject(st, et));
-                                    continue;
-                                }
+                                throw new ChartFormatException(ChartErrorType.Hold, lineCount);
                             }
 
-                            throw new ChartFormatException(ChartErrorType.Hold, line);
+                            var args = line.Substring(5, line.Length - 7).Split(',');
+                            if (args.Length != 3 ||
+                                !int.TryParse(args[0], out var timingStart) ||
+                                !int.TryParse(args[1], out var timingEnd) ||
+                                !float.TryParse(args[2], out _) ||
+                                timingStart < 0 ||
+                                timingEnd < timingStart)
+                            {
+                                throw new ChartFormatException(ChartErrorType.Hold, lineCount);
+                            }
+
+                            currGroup.Add(new LongObject(timingStart, timingEnd));
                         }
-                        else if (data.StartsWith("arc(") && data[^1] == ';')
+                        else if (line.StartsWith("arc(") && line[^1] == ';')
                         {
-                            string dataExtra = null;
+                            string appendant = null;
                             {
-                                var sb = data.IndexOf('[');
-                                var eb = data.IndexOf(']');
-                                if (sb >= 30 && sb < eb)
+                                var bracketStart = line.IndexOf('[');
+                                var bracketEnd = line.IndexOf(']');
+                                if (bracketStart >= 30 && bracketStart < bracketEnd)
                                 {
-                                    dataExtra = data.Substring(sb + 1, eb - sb - 1);
-                                    data = data.Remove(sb, eb - sb + 1);
+                                    appendant = line.Substring(bracketStart + 1, bracketEnd - bracketStart - 1);
+                                    line = line.Remove(bracketStart, bracketEnd - bracketStart + 1);
                                 }
                             }
 
-                            if (data.Length >= 31)
+                            if (line.Length < 31)
                             {
-                                var args = data.Substring(4, data.Length - 6).Split(',');
-                                if (args.Length != 10 && args.Length != 11) continue;
+                                throw new ChartFormatException(ChartErrorType.Arc, lineCount);
+                            }
+
+                            var args = line.Substring(4, line.Length - 6).Split(',');
+                            if (args.Length is 10 or 11)
+                            {
                                 var status = args[9] switch
                                 {
-                                    "false" => dataExtra == null ? ArcStatus.Normal : ArcStatus.TraceWithArcTap,
-                                    "true"  => dataExtra == null ? ArcStatus.Trace : ArcStatus.TraceWithArcTap,
-                                    "designant" => dataExtra == null
-                                        ? ArcStatus.Designant
-                                        : ArcStatus.DesignantWithArcTap,
-                                    _ => ArcStatus.Unknown
+                                    "false"     => appendant is null ? ArcStatus.Normal : ArcStatus.TraceWithTap,
+                                    "true"      => appendant is null ? ArcStatus.Trace : ArcStatus.TraceWithTap,
+                                    "designant" => appendant is null ? ArcStatus.Designant : ArcStatus.DesignantWithTap,
+                                    _           => ArcStatus.Unknown
                                 };
 
-                                if (int.TryParse(args[0], out var st) &&
-                                    int.TryParse(args[1], out var et) &&
-                                    float.TryParse(args[2], out var sx) &&
-                                    float.TryParse(args[3], out var ex) &&
-                                    CheckArcCurve(args[4]) &&
-                                    float.TryParse(args[5], out var sy) &&
-                                    float.TryParse(args[6], out var ey) &&
-                                    int.TryParse(args[7], out var color) &&
-                                    (args.Length == 10 || float.TryParse(args[10], out _)) &&
-                                    status != ArcStatus.Unknown &&
-                                    st >= 0 &&
-                                    et >= 0 &&
-                                    (status != ArcStatus.Normal || (st <= et && color is >= 0 and <= 3)))
+                                if (!int.TryParse(args[0], out var timingStart) ||
+                                    !int.TryParse(args[1], out var timingEnd) ||
+                                    !float.TryParse(args[2], out var xStart) ||
+                                    !float.TryParse(args[3], out var xEnd) ||
+                                    !CheckArcCurve(args[4]) ||
+                                    !float.TryParse(args[5], out var yStart) ||
+                                    !float.TryParse(args[6], out var yEnd) ||
+                                    !int.TryParse(args[7], out var colour) ||
+                                    (args.Length != 10 && !float.TryParse(args[10], out _)) ||
+                                    status == ArcStatus.Unknown ||
+                                    timingStart < 0 ||
+                                    timingEnd < 0 ||
+                                    (status == ArcStatus.Normal && (timingStart > timingEnd || colour is < 0 or > 3)))
                                 {
-                                    switch (status)
+                                    throw new ChartFormatException(ChartErrorType.Arc, lineCount);
+                                }
+
+                                switch (status)
+                                {
+                                case ArcStatus.Normal:
+                                    switch (colour)
                                     {
-                                    case ArcStatus.Normal:
-                                        switch (color)
-                                        {
-                                        case 2 when specialGreen:
-                                            break;
-                                        case 3 when st == et:
-                                            currGroup.Add();
-                                            break;
-                                        default:
-                                            {
-                                                var arc = new Arc(st, et, sx, ex, sy, ey);
-                                                currGroup.Add(arc);
-                                                arcs.Add(arc);
-                                                break;
-                                            }
-                                        }
-
+                                    case 2 when specialGreen:
                                         break;
-                                    case ArcStatus.TraceWithArcTap:
-                                        foreach (var cmd in dataExtra.Split(','))
-                                        {
-                                            if (cmd.Length >= 9 &&
-                                                cmd.StartsWith("arctap(") &&
-                                                cmd[^1] == ')' &&
-                                                int.TryParse(cmd.AsSpan(7, cmd.Length - 8), out _))
-                                            {
-                                                currGroup.Add();
-                                            }
-                                            else
-                                            {
-                                                throw new ChartFormatException(ChartErrorType.ArcTap, line);
-                                            }
-                                        }
-
+                                    case 3 when timingStart == timingEnd:
+                                        currGroup.Add();
                                         break;
+                                    default:
+                                        {
+                                            var arc = new Arc(timingStart, timingEnd, xStart, xEnd, yStart, yEnd);
+                                            currGroup.Add(arc);
+                                            arcs.Add(arc);
+                                            break;
+                                        }
                                     }
 
-                                    continue;
+                                    break;
+                                case ArcStatus.TraceWithTap:
+                                    foreach (var cmd in appendant.Split(','))
+                                    {
+                                        if (cmd.Length < 9 ||
+                                            !cmd.StartsWith("arctap(") ||
+                                            cmd[^1] != ')' ||
+                                            !int.TryParse(cmd.AsSpan(7, cmd.Length - 8), out _))
+                                        {
+                                            throw new ChartFormatException(ChartErrorType.ArcTap, lineCount);
+                                        }
+
+                                        currGroup.Add();
+                                    }
+
+                                    break;
                                 }
                             }
-
-                            throw new ChartFormatException(ChartErrorType.Arc, line);
                         }
-                        else if (data.StartsWith("scenecontrol(") && data.EndsWith(");"))
+                        else if (line.StartsWith("scenecontrol(") && line.EndsWith(");"))
                         {
-                            if (data.Length >= 24)
+                            if (line.Length < 24)
                             {
-                                var args = data.Substring(13, data.Length - 15).Split(',');
-                                if ((args.Length == 2 || (
-                                        args.Length == 4 &&
-                                        float.TryParse(args[2], out var d) &&
-                                        int.TryParse(args[3], out var v) &&
-                                        d >= 0 &&
-                                        v >= 0)) &&
-                                    int.TryParse(args[0], out var t) &&
-                                    t >= 0 &&
-                                    CheckSceneCtrlFx(args[1]))
-                                {
-                                    continue;
-                                }
+                                throw new ChartFormatException(ChartErrorType.SceneControl, lineCount);
                             }
 
-                            throw new ChartFormatException(ChartErrorType.SceneControl, line);
+                            var args = line.Substring(13, line.Length - 15).Split(',');
+                            if ((
+                                    args.Length != 2 &&
+                                    (
+                                        args.Length != 4 ||
+                                        !float.TryParse(args[2], out var duration) ||
+                                        !int.TryParse(args[3], out var value) ||
+                                        !(duration >= 0) ||
+                                        value < 0
+                                    )
+                                ) ||
+                                !int.TryParse(args[0], out var timing) ||
+                                timing < 0 ||
+                                !CheckSceneCtrlFx(args[1]))
+                            {
+                                throw new ChartFormatException(ChartErrorType.SceneControl, lineCount);
+                            }
                         }
-                        else if (data.StartsWith("camera(") && data.EndsWith(");"))
+                        else if (line.StartsWith("camera(") && line.EndsWith(");"))
                         {
-                            if (data.Length >= 26)
+                            if (line.Length < 26)
                             {
-                                var args = data.Substring(7, data.Length - 9).Split(',');
-                                if (args.Length == 9 &&
-                                    int.TryParse(args[0], out var t) &&
-                                    float.TryParse(args[1], out _) &&
-                                    float.TryParse(args[2], out _) &&
-                                    float.TryParse(args[3], out _) &&
-                                    float.TryParse(args[4], out _) &&
-                                    float.TryParse(args[5], out _) &&
-                                    float.TryParse(args[6], out _) &&
-                                    CheckCameraMotion(args[7]) &&
-                                    int.TryParse(args[8], out var d) &&
-                                    t >= 0 &&
-                                    d >= 0)
-                                {
-                                    continue;
-                                }
+                                throw new ChartFormatException(ChartErrorType.Camera, lineCount);
                             }
 
-                            throw new ChartFormatException(ChartErrorType.Camera, line);
+                            var args = line.Substring(7, line.Length - 9).Split(',');
+                            if (args.Length != 9 ||
+                                !int.TryParse(args[0], out var timing) ||
+                                !float.TryParse(args[1], out _) ||
+                                !float.TryParse(args[2], out _) ||
+                                !float.TryParse(args[3], out _) ||
+                                !float.TryParse(args[4], out _) ||
+                                !float.TryParse(args[5], out _) ||
+                                !float.TryParse(args[6], out _) ||
+                                !CheckCameraMotion(args[7]) ||
+                                !int.TryParse(args[8], out var duration) ||
+                                timing < 0 ||
+                                duration < 0)
+                            {
+                                throw new ChartFormatException(ChartErrorType.Camera, lineCount);
+                            }
                         }
                         else
                         {
-                            throw new ChartFormatException(ChartErrorType.Unknown, line);
+                            throw new ChartFormatException(ChartErrorType.Unknown, lineCount);
                         }
                     }
                 }
 
-                ++line;
+                ++lineCount;
+            }
+
+            if (mainGroup is null)
+            {
+                throw new ChartFormatException(ChartErrorType.FileFormat);
             }
 
             if (currGroup != mainGroup)
             {
-                throw new ChartFormatException(ChartErrorType.TimingGroup, line);
+                throw new ChartFormatException(ChartErrorType.TimingGroup, lineCount);
             }
 
             mainGroup.Preprocess();
@@ -351,7 +351,7 @@ namespace Moe.Lowiro.Arcaea
                         continue;
                     }
 
-                    if (next.HasHead && arc.EndY == next.StartY && Math.Abs(next.StartX - arc.EndX) < 0.1)
+                    if (next.HasHead && arc.YEnd == next.YStart && Math.Abs(next.XStart - arc.XEnd) < 0.1)
                     {
                         next.HasHead = false;
                     }
@@ -382,5 +382,11 @@ namespace Moe.Lowiro.Arcaea
             "l" or "reset" or "s" or "qi" or "qo" => true,
             _                                     => false
         };
+
+        [GeneratedRegex("angle[xy][1-9][0-9]{0,3}")]
+        private static partial Regex AngleRegex();
+
+        [GeneratedRegex("tracecol[0-9a-fA-F]{6}")]
+        private static partial Regex TraceColRegex();
     }
 }

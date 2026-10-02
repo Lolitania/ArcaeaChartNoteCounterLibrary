@@ -5,8 +5,8 @@ namespace Moe.Lowiro.Arcaea
         Unknown,
         Normal,
         Trace,
-        TraceWithArcTap,
+        TraceWithTap,
         Designant,
-        DesignantWithArcTap
+        DesignantWithTap
     }
 }
