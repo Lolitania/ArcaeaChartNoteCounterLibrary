@@ -40,14 +40,14 @@ namespace Moe.Lowiro.Arcaea
                     {
                         if (line.StartsWith("AudioOffset:"))
                         {
-                            if (!int.TryParse(line[12..], out _))
+                            if (!int.TryParse(line.AsSpan(12), out _))
                             {
                                 throw new ChartFormatException(ChartErrorType.AudioOffset, lineCount);
                             }
                         }
                         else if (line.StartsWith("TimingPointDensityFactor:"))
                         {
-                            if (!float.TryParse(line[25..], out tpdf))
+                            if (!float.TryParse(line.AsSpan(25), out tpdf))
                             {
                                 throw new ChartFormatException(ChartErrorType.TimingPointDensityFactor, lineCount);
                             }
@@ -89,7 +89,8 @@ namespace Moe.Lowiro.Arcaea
                                     allowInput = false;
                                     break;
                                 default:
-                                    if (!AngleRegex().IsMatch(arg) &&
+                                    if ((!arg.StartsWith("anglex") || !int.TryParse(arg.AsSpan(6), out _)) &&
+                                        (!arg.StartsWith("angley") || !int.TryParse(arg.AsSpan(6), out _)) &&
                                         !TraceColRegex().IsMatch(arg))
                                     {
                                         throw new ChartFormatException(ChartErrorType.TimingGroup, lineCount);
@@ -382,9 +383,6 @@ namespace Moe.Lowiro.Arcaea
             "l" or "reset" or "s" or "qi" or "qo" => true,
             _                                     => false
         };
-
-        [GeneratedRegex("angle[xy][1-9][0-9]{0,3}")]
-        private static partial Regex AngleRegex();
 
         [GeneratedRegex("tracecol[0-9a-fA-F]{6}")]
         private static partial Regex TraceColRegex();

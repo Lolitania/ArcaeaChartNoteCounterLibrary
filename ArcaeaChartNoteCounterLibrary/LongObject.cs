@@ -2,7 +2,7 @@
 {
     internal class LongObject : Event
     {
-        internal int EndTiming { get; set; }
+        internal int EndTiming { get; }
 
         internal bool HasHead { get; set; }
 
